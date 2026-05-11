@@ -63,9 +63,7 @@ export default function App() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ show: boolean, memberId: string }>({ show: false, memberId: '' });
   const [editingMember, setEditingMember] = useState<any>(null);
   const [showMemberModal, setShowMemberModal] = useState(false);
-  const [showKpiModal, setShowKpiModal] = useState(false);
   const [kpiForms, setKpiForms] = useState<Record<string, { output: number, quality: number, deadline: number }>>({});
-  const [selectedKpiMember, setSelectedKpiMember] = useState<any>(null);
   const [showProjectQualityModal, setShowProjectQualityModal] = useState(false);
   const [qualityScore, setQualityScore] = useState<number>(10);
   const [selectedQualityProject, setSelectedQualityProject] = useState<any>(null);
@@ -105,6 +103,7 @@ export default function App() {
 
   const [projectListTab, setProjectListTab] = useState<'photo' | 'video' | 'outsource'>('photo');
   const [isProjectsMenuExpanded, setIsProjectsMenuExpanded] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'kpis'>('general');
   const [showAllDone, setShowAllDone] = useState(false);
   const [dashboardMonth, setDashboardMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [selectedReport, setSelectedReport] = useState<any>(null);
@@ -576,13 +575,13 @@ export default function App() {
     }
   };
 
-  const handleSaveKpi = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedKpiMember) return;
-    
-    const memberId = selectedKpiMember.uid || selectedKpiMember.id;
+  const handleSaveInlineKpi = async (memberId: string) => {
+    if (!isAdmin) {
+      showToast('Chỉ Admin mới có quyền cập nhật KPI.', 'error');
+      return;
+    }
     const form = kpiForms[memberId];
-    
+    if (!form) return;
     try {
       setIsProcessing(true);
       await updateDoc(doc(db, 'teams', MAIN_TEAM_ID, 'members', memberId), {
@@ -590,9 +589,7 @@ export default function App() {
         kpiQuality: Number(form.quality),
         kpiDeadline: Number(form.deadline)
       });
-      
-      setToast({ show: true, message: 'Cập nhật KPI thành công', type: 'success' });
-      setShowKpiModal(false);
+      showToast('Cập nhật KPI thành công!');
     } catch (error) {
       handleFirestoreError(error, 'update', `teams/${MAIN_TEAM_ID}/members/${memberId}`);
     } finally {
@@ -3499,7 +3496,27 @@ export default function App() {
 
           {currentView === 'settings' && (
             <div className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="flex bg-[#141414] border border-[#262626] rounded-xl p-1 overflow-x-auto w-full md:max-w-md">
+                <button
+                  onClick={() => setSettingsTab('general')}
+                  className={`flex-1 min-w-[120px] py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
+                    settingsTab === 'general' ? 'bg-blue-600 shadow-md text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-[#1f1f1f]'
+                  }`}
+                >
+                  Cài đặt chung
+                </button>
+                <button
+                  onClick={() => setSettingsTab('kpis')}
+                  className={`flex-1 min-w-[120px] py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
+                    settingsTab === 'kpis' ? 'bg-blue-600 shadow-md text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-[#1f1f1f]'
+                  }`}
+                >
+                  KPI Thành viên
+                </button>
+              </div>
+
+              {settingsTab === 'general' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-8">
                   <div className="bg-[#141414] border border-[#262626] rounded-2xl p-8">
                     <h2 className="text-xl font-bold mb-6">Thông tin Team</h2>
@@ -3630,7 +3647,6 @@ export default function App() {
                           <div>
                             <button 
                               onClick={() => {
-                                setSelectedKpiMember(member);
                                 setKpiForms(prev => ({
                                   ...prev,
                                   [member.uid || member.id]: {
@@ -3639,7 +3655,7 @@ export default function App() {
                                     deadline: member.kpiDeadline || 10
                                   }
                                 }));
-                                setShowKpiModal(true);
+                                setSettingsTab('kpis');
                               }}
                               className="text-sm font-bold truncate max-w-[150px] hover:text-blue-500 transition-colors block text-left"
                             >
@@ -3680,6 +3696,23 @@ export default function App() {
                         
                         {isAdmin && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                setKpiForms(prev => ({
+                                  ...prev,
+                                  [member.uid || member.id]: {
+                                    output: member.kpiOutput || 100,
+                                    quality: member.kpiQuality || 10,
+                                    deadline: member.kpiDeadline || 10
+                                  }
+                                }));
+                                setSettingsTab('kpis');
+                              }}
+                              className="p-1.5 text-gray-500 hover:text-green-500"
+                              title="Thiết lập KPI"
+                            >
+                              <BarChartIcon size={14} />
+                            </button>
                             <button 
                               onClick={() => {
                                 setEditingMember(member);
@@ -3691,6 +3724,7 @@ export default function App() {
                                 setShowMemberModal(true);
                               }}
                               className="p-1.5 text-gray-500 hover:text-blue-500"
+                              title="Chỉnh sửa thành viên"
                             >
                               <Edit3 size={14} />
                             </button>
@@ -3698,6 +3732,7 @@ export default function App() {
                               <button 
                                 onClick={() => setShowDeleteConfirm({ show: true, memberId: member.uid || member.id })}
                                 className="p-1.5 text-gray-500 hover:text-red-500"
+                                title="Xóa thành viên"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -3709,6 +3744,83 @@ export default function App() {
                   </div>
                 </div>
               </div>
+              )}
+
+              {settingsTab === 'kpis' && (
+                <div className="bg-[#141414] border border-[#262626] rounded-2xl p-6">
+                  <h2 className="text-xl font-bold mb-6">Thiết lập KPI Thành viên</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {members.filter(m => m.role !== 'viewer').map((member) => {
+                      const memberId = member.uid || member.id;
+                      const currentForm = kpiForms[memberId] || {
+                        output: member.kpiOutput || 100,
+                        quality: member.kpiQuality || 10,
+                        deadline: member.kpiDeadline || 10
+                      };
+                      return (
+                        <div key={memberId} className="bg-[#0a0a0a] border border-[#262626] rounded-xl p-5 space-y-4">
+                          <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
+                            <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-sm font-bold border border-[#333] overflow-hidden">
+                              {member.avatarUrl ? (
+                                <img src={member.avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              ) : (
+                                member.email?.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-bold text-white">{member.username || member.email?.split('@')[0]}</p>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">{member.role}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1 block">KPI Sản lượng (Tính theo điểm)</label>
+                              <input 
+                                type="number" 
+                                value={currentForm.output}
+                                onChange={(e) => setKpiForms(prev => ({...prev, [memberId]: {...currentForm, output: Number(e.target.value)}}))}
+                                className="w-full bg-[#141414] border border-[#262626] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1 block">Chỉ tiêu Chất lượng (0-10)</label>
+                              <input 
+                                type="number" 
+                                step="0.1"
+                                max="10"
+                                value={currentForm.quality}
+                                onChange={(e) => setKpiForms(prev => ({...prev, [memberId]: {...currentForm, quality: Number(e.target.value)}}))}
+                                className="w-full bg-[#141414] border border-[#262626] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1 block">Điểm Timeline kỳ vọng</label>
+                              <input 
+                                type="number" 
+                                step="0.1"
+                                max="10"
+                                value={currentForm.deadline}
+                                onChange={(e) => setKpiForms(prev => ({...prev, [memberId]: {...currentForm, deadline: Number(e.target.value)}}))}
+                                className="w-full bg-[#141414] border border-[#262626] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm"
+                              />
+                            </div>
+                            {isAdmin && (
+                              <button 
+                                onClick={() => handleSaveInlineKpi(memberId)}
+                                disabled={isProcessing}
+                                className="w-full mt-2 py-2 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                              >
+                                {isProcessing ? 'Đang lưu...' : 'Lưu KPI'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -3843,7 +3955,7 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-3">
                     <button
                       type="button"
-                      onClick={() => setNewProject({...newProject, projectType: 'photo'})}
+                      onClick={() => setNewProject({...newProject, projectType: 'photo', photoPoint: 1, videoPoint: 3})}
                       className={`py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         newProject.projectType === 'photo'
                           ? 'bg-blue-600/10 border-blue-500 text-blue-400'
@@ -3855,7 +3967,7 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewProject({...newProject, projectType: 'video'})}
+                      onClick={() => setNewProject({...newProject, projectType: 'video', photoPoint: 1, videoPoint: 3})}
                       className={`py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         newProject.projectType === 'video'
                           ? 'bg-purple-600/10 border-purple-500 text-purple-400'
@@ -3867,7 +3979,7 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewProject({...newProject, projectType: 'outsource'})}
+                      onClick={() => setNewProject({...newProject, projectType: 'outsource', photoPoint: 0.5, videoPoint: 1})}
                       className={`py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         newProject.projectType === 'outsource'
                           ? 'bg-amber-600/10 border-amber-500 text-amber-400'
@@ -4900,101 +5012,6 @@ export default function App() {
                   Đóng chi tiết
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* KPI Settings Modal */}
-        {showKpiModal && selectedKpiMember && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
-            <div className="bg-[#141414] border border-[#262626] w-full max-w-md rounded-3xl p-8 shadow-2xl">
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-tight">Thiết lập KPI</h2>
-                  <p className="text-xs text-gray-500 mt-1">Thành viên: <span className="text-blue-500">{selectedKpiMember.username || selectedKpiMember.email?.split('@')[0]}</span></p>
-                </div>
-                <button onClick={() => setShowKpiModal(false)} className="p-2 hover:bg-[#262626] rounded-full transition-colors">
-                  <X size={24} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveKpi} className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-gray-400">KPI Output (Điểm/Tháng)</label>
-                    <input 
-                      required
-                      type="number" 
-                      value={kpiForms[selectedKpiMember.uid || selectedKpiMember.id]?.output || 100}
-                      onChange={e => setKpiForms(prev => ({
-                        ...prev, 
-                        [selectedKpiMember.uid || selectedKpiMember.id]: {
-                          ...prev[selectedKpiMember.uid || selectedKpiMember.id],
-                          output: Number(e.target.value)
-                        }
-                      }))}
-                      className="w-full bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors"
-                      placeholder="VD: 100"
-                    />
-                    <p className="text-[10px] text-gray-600 italic">* Tổng số điểm từ các project hoàn thành trong tháng.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-gray-400">KPI Chất lượng (Thang điểm 10)</label>
-                    <input 
-                      required
-                      type="number" 
-                      min="1" max="10"
-                      value={kpiForms[selectedKpiMember.uid || selectedKpiMember.id]?.quality || 10}
-                      onChange={e => setKpiForms(prev => ({
-                        ...prev, 
-                        [selectedKpiMember.uid || selectedKpiMember.id]: {
-                          ...prev[selectedKpiMember.uid || selectedKpiMember.id],
-                          quality: Number(e.target.value)
-                        }
-                      }))}
-                      className="w-full bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors"
-                    />
-                    <p className="text-[10px] text-gray-600 italic">* Điểm đánh giá chất lượng trung bình của các project.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-gray-400">KPI Deadline (Thang điểm 10)</label>
-                    <input 
-                      required
-                      type="number" 
-                      min="1" max="10"
-                      value={kpiForms[selectedKpiMember.uid || selectedKpiMember.id]?.deadline || 10}
-                      onChange={e => setKpiForms(prev => ({
-                        ...prev, 
-                        [selectedKpiMember.uid || selectedKpiMember.id]: {
-                          ...prev[selectedKpiMember.uid || selectedKpiMember.id],
-                          deadline: Number(e.target.value)
-                        }
-                      }))}
-                      className="w-full bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors"
-                    />
-                    <p className="text-[10px] text-gray-600 italic">* Điểm trung bình tiến độ project khi đến hạn deadline.</p>
-                  </div>
-                </div>
-
-                <div className="pt-4 flex gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setShowKpiModal(false)}
-                    className="flex-1 py-3 px-4 bg-[#262626] hover:bg-[#333] rounded-xl text-sm font-bold transition-colors"
-                  >
-                    Hủy
-                  </button>
-                  <button 
-                    disabled={isProcessing}
-                    type="submit"
-                    className="flex-[2] py-3 px-4 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-lg shadow-purple-900/20"
-                  >
-                    {isProcessing ? 'Đang lưu...' : 'Lưu KPI'}
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}
