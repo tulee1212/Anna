@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "Team": {
+      "title": "Team",
+      "description": "A media production team identified by a unique ID.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique team code (e.g., XH72K9A)."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the team."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the team was created."
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "The UID of the user who created the team."
+        }
+      },
+      "required": ["id", "createdAt", "createdBy"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "A user who is a member of a team.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "editor", "viewer"],
+          "description": "The user's role within the team."
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the user joined the team."
+        },
+        "kpiOutput": { "type": "number", "description": "Target points per month" },
+        "kpiQuality": { "type": "number", "description": "Target quality score (1-10)" },
+        "kpiDeadline": { "type": "number", "description": "Target deadline performance (1-10)" }
+      },
+      "required": ["uid", "email", "role", "joinedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A media project within the team.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["planning", "production", "post-production", "completed"] },
+        "deadline": { "type": "string", "format": "date" },
+        "productCount": { "type": "number", "description": "Number of products for this project" },
+        "photoTarget": { "type": "number" },
+        "videoTarget": { "type": "number" },
+        "photoPoint": { "type": "number", "description": "Points per photo for this project" },
+        "videoPoint": { "type": "number", "description": "Points per video for this project" },
+        "projectType": { "type": "string", "enum": ["inhouse", "outsource"], "description": "Whether the project is inhouse or outsource" },
+        "qualityScore": { "type": "number", "description": "Quality score given when project is completed (1-10)" },
+        "itemStatus": { "type": "string", "enum": ["chưa nhận", "đã nhận", "đã trả"], "description": "Tình trạng hàng của dự án" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "title", "status", "productCount", "createdAt", "createdBy"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task within a project.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["pre-production", "photo", "video"] },
+        "status": { "type": "string", "enum": ["pending", "in-progress", "completed"] },
+        "amount": { "type": "number", "description": "Used if category is pre-production (budget)" },
+        "dntt": { "type": "boolean", "description": "Đề nghị thanh toán (DNTT) - only for pre-production" },
+        "quantity": { "type": "number", "description": "Number of items completed in this entry" },
+        "images": { "type": "array", "items": { "type": "string" }, "description": "List of image URLs attached to the task" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "title", "category", "status", "createdAt", "createdBy"]
+    },
+    "DailyReport": {
+      "title": "Daily Report",
+      "description": "A daily activity report submitted by a team member.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string", "description": "The content of the report." },
+        "reportDate": { "type": "string", "format": "date", "description": "The date the report is for." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string", "description": "UID of the user who submitted the report." },
+        "userEmail": { "type": "string", "description": "Email of the user who submitted the report." }
+      },
+      "required": ["id", "content", "reportDate", "createdAt", "createdBy", "userEmail"]
+    }
+  },
+  "firestore": {
+    "/teams/{teamId}": {
+      "schema": "Team",
+      "description": "Storage for team metadata."
+    },
+    "/teams/{teamId}/members/{userId}": {
+      "schema": "Member",
+      "description": "Storage for team membership information."
+    },
+    "/teams/{teamId}/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Storage for team projects."
+    },
+    "/teams/{teamId}/projects/{projectId}/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Storage for project tasks."
+    },
+    "/teams/{teamId}/reports/{reportId}": {
+      "schema": "DailyReport",
+      "description": "Storage for daily activity reports."
+    }
+  }
+}

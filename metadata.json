@@ -1,0 +1,5 @@
+{
+  "name": "Media Team Manager",
+  "description": "Hệ thống quản lý team Media nội bộ với Dashboard thông tin, quản lý Project và báo cáo hàng ngày. Hỗ trợ phân quyền Admin/Editor/Viewer.",
+  "requestFramePermissions": []
+}

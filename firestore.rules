@@ -1,0 +1,100 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: teams
+// Document ID: {teamId}
+// Fields:
+//   - id: string (required) - The unique team code.
+//   - name: string (optional)
+//   - createdAt: timestamp (required)
+//   - createdBy: string (required) - UID of creator.
+//
+// Collection: teams/{teamId}/members
+// Document ID: {userId}
+// Fields:
+//   - uid: string (required)
+//   - email: string (required)
+//   - role: string (required, enum: admin, editor, viewer)
+//   - joinedAt: timestamp (required)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isTeamMember(teamId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid));
+    }
+
+    function getMemberRole(teamId) {
+      return get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin(teamId) {
+      return isAuthenticated() && (
+        request.auth.token.email == "leanhtu1212@gmail.com" ||
+        request.auth.token.email == "admin@production.team" ||
+        (exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isEditor(teamId) {
+      return isTeamMember(teamId) && (getMemberRole(teamId) == 'editor' || getMemberRole(teamId) == 'admin');
+    }
+
+    // Collection Group for Tasks
+    match /{path=**}/tasks/{taskId} {
+      allow read: if isAuthenticated();
+    }
+
+    // Teams Collection
+    match /teams/{teamId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isTeamMember(teamId);
+      
+      // Members Subcollection
+      match /members/{userId} {
+        allow read: if isAuthenticated();
+        allow create: if isAdmin(teamId) || (request.auth.uid == userId && get(/databases/$(database)/documents/teams/$(teamId)).data.createdBy == request.auth.uid);
+        allow update: if isAdmin(teamId) || (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid', 'email', 'joinedAt']));
+        allow delete: if isAdmin(teamId) && userId != request.auth.uid;
+      }
+
+      // Projects Subcollection
+      match /projects/{projectId} {
+        allow read: if isTeamMember(teamId);
+        allow create: if isEditor(teamId);
+        allow update: if isEditor(teamId);
+        allow delete: if isAdmin(teamId);
+
+        // Tasks Subcollection
+        match /tasks/{taskId} {
+          allow read: if isTeamMember(teamId);
+          allow create, update: if isEditor(teamId);
+          allow delete: if isEditor(teamId);
+        }
+      }
+
+      // Reports Subcollection
+      match /reports/{reportId} {
+        allow read: if isTeamMember(teamId);
+        allow create, update: if isTeamMember(teamId);
+        allow delete: if isAdmin(teamId);
+      }
+    }
+  }
+}
