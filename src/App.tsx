@@ -10,7 +10,7 @@ import {
 import { User } from 'firebase/auth';
 import { 
   LogOut, LayoutDashboard, Users as UsersIcon, Settings, AlertCircle, 
-  Plus, FileText, Clock, X, Calendar, CheckCircle2, Check, ChevronLeft, 
+  Plus, FileText, Clock, X, Calendar, CheckCircle2, Check, ChevronLeft, ChevronDown, 
   ChevronRight, Trash2, DollarSign, Camera, Edit3, MoreVertical, Lock, Mail, UserPlus, User as UserIcon,
   BarChart as BarChartIcon, Eye, EyeOff, Menu, Star
 } from 'lucide-react';
@@ -100,9 +100,11 @@ export default function App() {
     photoPoint: 1,
     videoPoint: 3,
     itemStatus: 'chưa nhận',
-    projectType: 'inhouse'
+    projectType: 'photo'
   });
 
+  const [projectListTab, setProjectListTab] = useState<'photo' | 'video' | 'outsource'>('photo');
+  const [isProjectsMenuExpanded, setIsProjectsMenuExpanded] = useState(false);
   const [showAllDone, setShowAllDone] = useState(false);
   const [dashboardMonth, setDashboardMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [selectedReport, setSelectedReport] = useState<any>(null);
@@ -542,7 +544,7 @@ export default function App() {
       }
       setShowProjectModal(false);
       setEditingProject(null);
-      setNewProject({ title: '', description: '', deadline: '', status: 'plan', productCount: 1, photoTarget: 0, videoTarget: 0, photoPoint: 0, videoPoint: 0, itemStatus: 'chưa nhận', projectType: 'inhouse' });
+      setNewProject({ title: '', description: '', deadline: '', status: 'plan', productCount: 1, photoTarget: 0, videoTarget: 0, photoPoint: 0, videoPoint: 0, itemStatus: 'chưa nhận', projectType: 'photo' });
       setCurrentView('projects');
     } catch (error) {
       handleFirestoreError(error, editingProject ? 'update' : 'write', `teams/${MAIN_TEAM_ID}/projects`);
@@ -1476,13 +1478,44 @@ export default function App() {
               <LayoutDashboard size={20} />
               Dashboard
             </button>
-            <button 
-              onClick={() => { setCurrentView('projects'); setShowMobileMenu(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${(currentView === 'projects' || currentView === 'project_detail') ? 'bg-blue-600/10 text-blue-500' : 'text-gray-400 hover:bg-[#141414]'}`}
-            >
-              <FileText size={20} />
-              Projects
-            </button>
+            <div className="space-y-1">
+              <button 
+                onClick={() => { setIsProjectsMenuExpanded(!isProjectsMenuExpanded); }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all ${(currentView === 'projects' || currentView === 'project_detail') ? 'bg-blue-600/10 text-blue-500' : 'text-gray-400 hover:bg-[#141414]'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <FileText size={20} />
+                  Projects
+                </div>
+                <ChevronDown size={16} className={`transition-transform ${isProjectsMenuExpanded ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isProjectsMenuExpanded && (
+                <div className="pl-11 pr-4 space-y-1 mt-1">
+                  <button 
+                    onClick={() => { setCurrentView('projects'); setProjectListTab('photo'); setShowMobileMenu(false); }}
+                    className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${currentView === 'projects' && projectListTab === 'photo' ? 'text-blue-500 bg-blue-500/10' : 'text-gray-400 hover:text-gray-200 hover:bg-[#141414]'}`}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                    Ảnh
+                  </button>
+                  <button 
+                    onClick={() => { setCurrentView('projects'); setProjectListTab('video'); setShowMobileMenu(false); }}
+                    className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${currentView === 'projects' && projectListTab === 'video' ? 'text-purple-500 bg-purple-500/10' : 'text-gray-400 hover:text-gray-200 hover:bg-[#141414]'}`}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                    Video
+                  </button>
+                  <button 
+                    onClick={() => { setCurrentView('projects'); setProjectListTab('outsource'); setShowMobileMenu(false); }}
+                    className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${currentView === 'projects' && projectListTab === 'outsource' ? 'text-amber-500 bg-amber-500/10' : 'text-gray-400 hover:text-gray-200 hover:bg-[#141414]'}`}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                    Outsource
+                  </button>
+                </div>
+              )}
+            </div>
             <button 
               onClick={() => { setCurrentView('reports'); setShowMobileMenu(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${currentView === 'reports' ? 'bg-blue-600/10 text-blue-500' : 'text-gray-400 hover:bg-[#141414]'}`}
@@ -2363,13 +2396,14 @@ export default function App() {
           )}
 
           {currentView === 'projects' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 pb-10 min-h-[calc(100vh-250px)] w-full">
-              {[
-                { id: 'plan', label: 'Plan', color: 'gray' },
-                { id: 'pre-production', label: 'Tiền kỳ', color: 'yellow' },
-                { id: 'post-production', label: 'Hậu kỳ', color: 'blue' },
-                { id: 'done', label: 'Done', color: 'green' }
-              ].map(status => (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 pb-10 min-h-[calc(100vh-250px)] w-full">
+                {[
+                  { id: 'plan', label: 'Plan', color: 'gray' },
+                  { id: 'pre-production', label: 'Tiền kỳ', color: 'yellow' },
+                  { id: 'post-production', label: 'Hậu kỳ', color: 'blue' },
+                  { id: 'done', label: 'Done', color: 'green' }
+                ].map(status => (
                 <div key={status.id} className="flex flex-col gap-5 h-full">
                   <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-3">
@@ -2387,7 +2421,16 @@ export default function App() {
 
                   <div className="flex-1 space-y-5 overflow-y-auto pr-2 custom-scrollbar">
                     {(() => {
-                      const statusProjects = projects.filter(p => p.status === status.id);
+                      const statusProjects = projects.filter(p => 
+                        p.status === status.id && (
+                          projectListTab === 'outsource' 
+                            ? p.projectType === 'outsource' 
+                            : (projectListTab === 'video' 
+                                ? p.projectType === 'video' 
+                                : (p.projectType === 'photo' || p.projectType === 'inhouse' || !p.projectType)
+                              )
+                        )
+                      );
                       const displayProjects = (status.id === 'done' && !showAllDone) 
                         ? statusProjects.slice(0, 5) 
                         : statusProjects;
@@ -2415,6 +2458,8 @@ export default function App() {
                                 className={`bg-[#141414] border rounded-2xl p-6 transition-all group cursor-pointer shadow-xl relative overflow-hidden backdrop-blur-sm ${
                                   project.projectType === 'outsource'
                                     ? 'border-amber-500/20 hover:border-amber-500/60 hover:shadow-amber-500/5'
+                                    : project.projectType === 'video'
+                                    ? 'border-purple-500/20 hover:border-purple-500/60 hover:shadow-purple-500/5'
                                     : 'border-[#262626] hover:border-blue-500/50 hover:shadow-blue-500/5'
                                 }`}
                               >
@@ -2424,9 +2469,11 @@ export default function App() {
                                     <span className={`px-2 py-0.5 text-[9px] font-bold rounded-md uppercase tracking-wider ${
                                       project.projectType === 'outsource' 
                                         ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                                        : project.projectType === 'video'
+                                        ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
                                         : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                                     }`}>
-                                      {project.projectType === 'outsource' ? 'Outsource' : 'Inhouse'}
+                                      {project.projectType === 'outsource' ? 'Outsource' : project.projectType === 'video' ? 'Video' : 'Ảnh'}
                                     </span>
                                   </div>
                                   <Calendar size={14} className="text-gray-600" />
@@ -2434,7 +2481,7 @@ export default function App() {
                                 <h4 className={`text-lg font-bold mb-2 transition-colors line-clamp-1 ${
                                   project.projectType === 'outsource'
                                     ? 'group-hover:text-amber-500'
-                                    : 'group-hover:text-blue-500'
+                                    : project.projectType === 'video' ? 'group-hover:text-purple-500' : 'group-hover:text-blue-500'
                                 }`}>{project.title}</h4>
                                 <p className="text-sm text-gray-500 mb-6 line-clamp-2 leading-relaxed">{project.description || 'Không có mô tả.'}</p>
                                 
@@ -2442,12 +2489,12 @@ export default function App() {
                                 <div className="space-y-3 mb-6">
                                   <div className="flex justify-between items-center text-xs font-bold">
                                     <span className="text-gray-500 uppercase tracking-wider">Tiến độ</span>
-                                    <span className={progress === 100 ? 'text-green-500' : (project.projectType === 'outsource' ? 'text-amber-500' : 'text-blue-500')}>{progress}%</span>
+                                    <span className={progress === 100 ? 'text-green-500' : (project.projectType === 'outsource' ? 'text-amber-500' : project.projectType === 'video' ? 'text-purple-500' : 'text-blue-500')}>{progress}%</span>
                                   </div>
                                   <div className="h-2 bg-[#0a0a0a] rounded-full overflow-hidden border border-[#262626]">
                                     <div 
                                       className={`h-full transition-all duration-700 ease-out ${
-                                        progress === 100 ? 'bg-green-500' : (project.projectType === 'outsource' ? 'bg-amber-500' : 'bg-blue-600')
+                                        progress === 100 ? 'bg-green-500' : (project.projectType === 'outsource' ? 'bg-amber-500' : project.projectType === 'video' ? 'bg-purple-600' : 'bg-blue-600')
                                       }`}
                                       style={{ width: `${progress}%` }}
                                     />
@@ -2468,7 +2515,7 @@ export default function App() {
                                     <span className="text-[11px]">{project.deadline || 'No deadline'}</span>
                                   </div>
                                   <div className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold ${
-                                    project.projectType === 'outsource' ? 'text-amber-500' : 'text-blue-500'
+                                    project.projectType === 'outsource' ? 'text-amber-500' : project.projectType === 'video' ? 'text-purple-500' : 'text-blue-500'
                                   }`}>
                                     Chi tiết →
                                   </div>
@@ -2508,6 +2555,7 @@ export default function App() {
                   </div>
                 </div>
               ))}
+            </div>
             </div>
           )}
 
@@ -3375,9 +3423,11 @@ export default function App() {
                           <span className={`inline-block px-2 py-0.5 mt-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
                             projects.find(p => p.id === selectedProjectId)?.projectType === 'outsource' 
                               ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                              : projects.find(p => p.id === selectedProjectId)?.projectType === 'video'
+                              ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20'
                               : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                           }`}>
-                            {projects.find(p => p.id === selectedProjectId)?.projectType || 'inhouse'}
+                            {projects.find(p => p.id === selectedProjectId)?.projectType === 'outsource' ? 'Outsource' : projects.find(p => p.id === selectedProjectId)?.projectType === 'video' ? 'Video' : 'Ảnh'}
                           </span>
                         </div>
                       </div>
@@ -3753,7 +3803,7 @@ export default function App() {
                   onClick={() => {
                     setShowProjectModal(false);
                     setEditingProject(null);
-                    setNewProject({ title: '', description: '', deadline: '', status: 'plan', productCount: 1, photoTarget: 0, videoTarget: 0, photoPoint: 0, videoPoint: 0, itemStatus: 'chưa nhận', projectType: 'inhouse' });
+                    setNewProject({ title: '', description: '', deadline: '', status: 'plan', productCount: 1, photoTarget: 0, videoTarget: 0, photoPoint: 0, videoPoint: 0, itemStatus: 'chưa nhận', projectType: 'photo' });
                   }} 
                   className="p-2 hover:bg-[#262626] rounded-full transition-colors"
                 >
@@ -3790,18 +3840,30 @@ export default function App() {
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Loại Project</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <button
                       type="button"
-                      onClick={() => setNewProject({...newProject, projectType: 'inhouse'})}
+                      onClick={() => setNewProject({...newProject, projectType: 'photo'})}
                       className={`py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                        newProject.projectType !== 'outsource'
+                        newProject.projectType === 'photo'
                           ? 'bg-blue-600/10 border-blue-500 text-blue-400'
                           : 'bg-[#0a0a0a] border-[#333] text-gray-400 hover:border-[#444]'
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${newProject.projectType !== 'outsource' ? 'bg-blue-500' : 'bg-gray-600'}`} />
-                      Inhouse
+                      <span className={`w-2 h-2 rounded-full ${newProject.projectType === 'photo' ? 'bg-blue-500' : 'bg-gray-600'}`} />
+                      Ảnh
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewProject({...newProject, projectType: 'video'})}
+                      className={`py-3 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                        newProject.projectType === 'video'
+                          ? 'bg-purple-600/10 border-purple-500 text-purple-400'
+                          : 'bg-[#0a0a0a] border-[#333] text-gray-400 hover:border-[#444]'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${newProject.projectType === 'video' ? 'bg-purple-500' : 'bg-gray-600'}`} />
+                      Video
                     </button>
                     <button
                       type="button"
@@ -3931,7 +3993,7 @@ export default function App() {
                     onClick={() => {
                       setShowProjectModal(false);
                       setEditingProject(null);
-                      setNewProject({ title: '', description: '', deadline: '', status: 'plan', productCount: 1, photoTarget: 0, videoTarget: 0, photoPoint: 0, videoPoint: 0, itemStatus: 'chưa nhận', projectType: 'inhouse' });
+                      setNewProject({ title: '', description: '', deadline: '', status: 'plan', productCount: 1, photoTarget: 0, videoTarget: 0, photoPoint: 0, videoPoint: 0, itemStatus: 'chưa nhận', projectType: 'photo' });
                     }}
                     className="flex-1 py-3 px-4 bg-transparent hover:bg-[#1f1f1f] border border-[#333] rounded-xl text-sm font-bold transition-colors"
                   >
